@@ -10,6 +10,25 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+    - name: Install Raylib dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y \
+          build-essential \
+          cmake \
+          libx11-dev \
+          libgl1-mesa-dev \
+          libasound2-dev \
+          libudev-dev \
+          libfreetype6-dev \
+          libflac-dev \
+          libogg-dev \
+          libvorbis-dev \
+          libsdl2-dev \
+          libopenal-dev \
+          libxrandr-dev \
+          libxi-dev \
+          libpulse-dev
     - name: Checkout repository
       uses: actions/checkout@v4
     - name: Init build folder
