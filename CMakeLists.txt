@@ -30,6 +30,7 @@ target_link_libraries(animation raylib)
 if (EMSCRIPTEN)
     set_target_properties(animation PROPERTIES SUFFIX ".html")
     target_link_options(animation PRIVATE
+        "SHELL:-sASYNCIFY"
         "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/IMG_1.jpeg@/IMG_1.jpeg"
     )
 endif()
