@@ -1,4 +1,5 @@
 build/*
+build-web/
 .vscode/*
 # Prerequisites
 *.d
