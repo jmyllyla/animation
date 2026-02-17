@@ -52,8 +52,8 @@ int main(void)
     const float outdoorDoorCenterX = -roomHalfX + vestibuleWidth*0.5f; // on south outer wall
     const float insideDoorCenterX = outdoorDoorCenterX;                 // straight-through with outdoor door
     const float endDoorCenterX = outdoorDoorCenterX + doorWidth*0.5f;   // shifted right by half door width
-    const float windowSillHeight = 0.9f;
-    const float windowTopHeight = 2.5f;
+    const float windowSillHeight = 1.08f;
+    const float windowTopHeight = 2.6f;
     const float southPierWidth = 0.25f; // small wall between door and window area
     const float windowJambWidth = 0.2f;
     const Color wallColor = (Color){ 245, 243, 238, 255 };   // natural warm white
@@ -213,6 +213,7 @@ int main(void)
             0.0f,
             (Vector3){ doorWidth, doorHeight, 0.04f },
             doorColor);
+
         DrawModelEx(door,
                 (Vector3){ endDoorCenterX, doorHeight*0.5f, -roomHalfZ + 0.03f },
             (Vector3){ 0.0f, 1.0f, 0.0f },
