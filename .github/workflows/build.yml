@@ -37,4 +37,49 @@ jobs:
     - name: Build
       run: |
         cmake --build build
+
+  build-web:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Emscripten SDK
+      uses: mymindstorm/setup-emsdk@v14
+
+    - name: Configure Web build
+      run: |
+        emcmake cmake -S . -B build-web -DPLATFORM=Web -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build WebAssembly target
+      run: |
+        cmake --build build-web --config Release
+
+    - name: Verify WebAssembly outputs
+      run: |
+        test -f build-web/animation.html
+        test -f build-web/animation.js
+        test -f build-web/animation.wasm
+        test -f build-web/animation.data
+
+    - name: Web smoke test (serve + HTTP checks)
+      run: |
+        python3 -m http.server 8765 --directory build-web > /tmp/web-serve.log 2>&1 &
+        SERVER_PID=$!
+        sleep 2
+        curl --fail --silent --show-error http://localhost:8765/animation.html > /dev/null
+        curl --fail --silent --show-error http://localhost:8765/animation.js > /dev/null
+        curl --fail --silent --show-error http://localhost:8765/animation.wasm > /dev/null
+        kill $SERVER_PID
+
+    - name: Upload Web build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: animation-web
+        path: |
+          build-web/animation.html
+          build-web/animation.js
+          build-web/animation.wasm
+          build-web/animation.data
+        if-no-files-found: warn
       
