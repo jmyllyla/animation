@@ -34,6 +34,7 @@ if (EMSCRIPTEN)
         "SHELL:-sASYNCIFY"
         "SHELL:-sALLOW_MEMORY_GROWTH=1"
         "SHELL:-sINITIAL_MEMORY=134217728"
+        "SHELL:--shell-file ${CMAKE_SOURCE_DIR}/web/shell_iframe.html"
         "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/assets@/assets"
     )
 endif()
