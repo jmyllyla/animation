@@ -62,6 +62,95 @@ static void ResizeArtworkImageForWeb(Image *image)
 #endif
 }
 
+static float Clamp01(float value)
+{
+    if (value < 0.0f) return 0.0f;
+    if (value > 1.0f) return 1.0f;
+    return value;
+}
+
+static float GetArtworkLookPitch(
+    Vector3 cameraPosition,
+    Vector3 forward,
+    const Vector3 *artworkPositions,
+    const float *artworkWidthCm,
+    const float *artworkHeightCm,
+    const bool *artworkOnZWall,
+    int artworkCount,
+    float centimetersToWorld,
+    float basePitch)
+{
+    const float fullLookDistance = 0.85f;
+    const float maxAutoLookDistance = 2.2f;
+    const float lateralFadeMargin = 0.75f;
+    const float minimumFacingDot = 0.35f;
+    const float minimumWallFacingDot = 0.7f;
+    const float minimumProjectedDistance = 0.18f;
+    const float maxUpwardPitch = PI/2.8f;
+    float bestStrength = 0.0f;
+    float bestPitch = basePitch;
+
+    for (int i = 0; i < artworkCount; i++)
+    {
+        float toArtworkX = artworkPositions[i].x - cameraPosition.x;
+        float toArtworkZ = artworkPositions[i].z - cameraPosition.z;
+        float horizontalDistance = sqrtf(toArtworkX*toArtworkX + toArtworkZ*toArtworkZ);
+        if (horizontalDistance <= 0.001f) continue;
+
+        float facingDot = (toArtworkX*forward.x + toArtworkZ*forward.z)/horizontalDistance;
+        if (facingDot <= minimumFacingDot) continue;
+
+        float wallFacingDot = artworkOnZWall[i]
+            ? artworkPositions[i].z < 0.0f
+                ? -forward.z
+                : forward.z
+            : artworkPositions[i].x < 0.0f
+                ? -forward.x
+                : forward.x;
+        if (wallFacingDot <= minimumWallFacingDot) continue;
+
+        float pictureWidth = artworkWidthCm[i]*centimetersToWorld;
+        float pictureHeight = artworkHeightCm[i]*centimetersToWorld;
+        float planeDistance = artworkOnZWall[i]
+            ? artworkPositions[i].z < 0.0f
+                ? cameraPosition.z - artworkPositions[i].z
+                : artworkPositions[i].z - cameraPosition.z
+            : artworkPositions[i].x < 0.0f
+                ? cameraPosition.x - artworkPositions[i].x
+                : artworkPositions[i].x - cameraPosition.x;
+        if (planeDistance <= 0.0f || planeDistance >= maxAutoLookDistance) continue;
+
+        float lateralDistance = artworkOnZWall[i]
+            ? fabsf(cameraPosition.x - artworkPositions[i].x)
+            : fabsf(cameraPosition.z - artworkPositions[i].z);
+        float lateralStrength = 1.0f - Clamp01((lateralDistance - pictureWidth*0.5f)/lateralFadeMargin);
+        if (lateralStrength <= 0.0f) continue;
+
+        float closeStrength = planeDistance <= fullLookDistance
+            ? 1.0f
+            : 1.0f - (planeDistance - fullLookDistance)/(maxAutoLookDistance - fullLookDistance);
+        closeStrength = Clamp01(closeStrength);
+        float facingStrength = Clamp01((facingDot - minimumFacingDot)/(1.0f - minimumFacingDot));
+        float wallFacingStrength = Clamp01((wallFacingDot - minimumWallFacingDot)/(1.0f - minimumWallFacingDot));
+        float strength = closeStrength
+            *(0.45f + 0.55f*lateralStrength)
+            *(0.25f + 0.75f*facingStrength)
+            *wallFacingStrength;
+        if (strength <= bestStrength) continue;
+
+        float topInset = pictureHeight*0.38f;
+        float focusY = artworkPositions[i].y + pictureHeight*0.5f - topInset;
+        float projectedDistance = fmaxf(minimumProjectedDistance, toArtworkX*forward.x + toArtworkZ*forward.z);
+        float desiredPitch = atan2f(focusY - cameraPosition.y, projectedDistance);
+        if (desiredPitch > maxUpwardPitch) desiredPitch = maxUpwardPitch;
+
+        bestStrength = strength;
+        bestPitch = desiredPitch;
+    }
+
+    return basePitch + (bestPitch - basePitch)*bestStrength;
+}
+
 int main(void)
 {
     InitWindow(WIDTH, HEIGHT, "Minimal Raylib Example");
@@ -80,6 +169,10 @@ int main(void)
     const float cameraTurnSpeed = 1.6f;   // radians per second
     const float cameraMoveSpeed = 2.0f;   // world units per second
     const float cameraLookDrop = 0.15f;
+    const float baseLookPitch = atan2f(-cameraLookDrop, 1.0f);
+    float cameraPitch = baseLookPitch;
+    const float cameraPitchResponsiveness = 7.5f;
+    const float centimetersToWorld = 0.016f;
 
     const char *artworkPaths[] = {
         "assets/01-linnut-lampi-56x38cm.jpg",
@@ -162,7 +255,6 @@ int main(void)
     const float pictureDepth = 0.02f;
     const float pictureInset = 0.12f;
     const Color floorColor = (Color){ 150, 155, 160, 255 };  // muted medium gray
-    const float centimetersToWorld = 0.016f;
     const bool artworkOnZWall[artworkCount] = {
         false, false, false,
         true, true, true, true, true, true, true,
@@ -229,10 +321,28 @@ int main(void)
         }
 
         camera.position.y = cameraEyeHeight;
+        float desiredPitch = GetArtworkLookPitch(
+            camera.position,
+            forward,
+            artworkPositions,
+            artworkWidthCm,
+            artworkHeightCm,
+            artworkOnZWall,
+            artworkCount,
+            centimetersToWorld,
+            baseLookPitch);
+        float pitchBlend = 1.0f - expf(-cameraPitchResponsiveness*frameTime);
+        cameraPitch += (desiredPitch - cameraPitch)*pitchBlend;
+        float lookForwardScale = cosf(cameraPitch);
+        Vector3 lookDirection = {
+            forward.x*lookForwardScale,
+            sinf(cameraPitch),
+            forward.z*lookForwardScale
+        };
         camera.target = (Vector3){
-            camera.position.x + forward.x,
-            camera.position.y - cameraLookDrop,
-            camera.position.z + forward.z
+            camera.position.x + lookDirection.x,
+            camera.position.y + lookDirection.y,
+            camera.position.z + lookDirection.z
         };
         if (IsKeyPressed(KEY_C)) showCorners = !showCorners;
 
