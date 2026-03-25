@@ -1,6 +1,10 @@
 #include <raylib.h>
 #include <stdio.h>
 #include <math.h>
+
+#if defined(PLATFORM_WEB)
+    #include <stdlib.h>
+#endif
 #define WIDTH 800
 #define HEIGHT 600
 
@@ -34,6 +38,28 @@ static bool ParseArtworkDimensionsCm(const char *path, float *widthCm, float *he
     }
 
     return false;
+}
+
+static void ResizeArtworkImageForWeb(Image *image)
+{
+#if defined(PLATFORM_WEB)
+    const int maxTextureEdge = 1024;
+    int longestEdge = (image->width > image->height) ? image->width : image->height;
+
+    if (longestEdge > maxTextureEdge)
+    {
+        float scale = (float)maxTextureEdge/(float)longestEdge;
+        int resizedWidth = (int)roundf((float)image->width*scale);
+        int resizedHeight = (int)roundf((float)image->height*scale);
+
+        if (resizedWidth < 1) resizedWidth = 1;
+        if (resizedHeight < 1) resizedHeight = 1;
+
+        ImageResize(image, resizedWidth, resizedHeight);
+    }
+#else
+    (void)image;
+#endif
 }
 
 int main(void)
@@ -74,28 +100,29 @@ int main(void)
         "assets/16-maunon-puutarha-56x38cm.jpg",
     };
     const int artworkCount = (int)(sizeof(artworkPaths)/sizeof(artworkPaths[0]));
-    Image artworkImages[16] = { 0 };
     Texture2D artworkTextures[16] = { 0 };
     float artworkWidthCm[16] = { 0 };
     float artworkHeightCm[16] = { 0 };
     for (int i = 0; i < artworkCount; i++)
     {
-        artworkImages[i] = LoadImage(artworkPaths[i]);
-        if (!ParseArtworkDimensionsCm(artworkPaths[i], &artworkWidthCm[i], &artworkHeightCm[i]))
-        {
-            artworkWidthCm[i] = (float)artworkImages[i].width;
-            artworkHeightCm[i] = (float)artworkImages[i].height;
-        }
-        ImageFlipVertical(&artworkImages[i]);
+        Image artworkImage = LoadImage(artworkPaths[i]);
+        ImageFlipVertical(&artworkImage);
         if (i == 8)
         {
-            ImageFlipHorizontal(&artworkImages[i]);
+            ImageFlipHorizontal(&artworkImage);
         }
         if (i == 4)
         {
-            ImageRotateCCW(&artworkImages[i]);
+            ImageRotateCCW(&artworkImage);
         }
-        artworkTextures[i] = LoadTextureFromImage(artworkImages[i]);
+        if (!ParseArtworkDimensionsCm(artworkPaths[i], &artworkWidthCm[i], &artworkHeightCm[i]))
+        {
+            artworkWidthCm[i] = (float)artworkImage.width;
+            artworkHeightCm[i] = (float)artworkImage.height;
+        }
+        ResizeArtworkImageForWeb(&artworkImage);
+        artworkTextures[i] = LoadTextureFromImage(artworkImage);
+        UnloadImage(artworkImage);
     }
     Model wall = LoadModelFromMesh(GenMeshCube(1.0f, 1.0f, 1.0f));
     Model door = LoadModelFromMesh(GenMeshCube(1.0f, 1.0f, 1.0f));
@@ -127,8 +154,8 @@ int main(void)
     const float cornerAccentSize = 0.07f;
     const Color wallColor = (Color){ 245, 243, 238, 255 };   // natural warm white
     const Color cornerColor = (Color){ 72, 76, 82, 255 };    // dark gray corner accents
-    const Color doorColor = (Color){ 160, 120, 80, 255 };
-    const Color beigeDoorColor = (Color){ 210, 190, 155, 255 };
+    const Color smokyAluminumDoorColor = (Color){ 142, 147, 152, 255 };
+    const Color northDoorColor = (Color){ 236, 236, 234, 255 };
     const Color windowFrameColor = (Color){ 250, 250, 247, 255 };
     const float pictureY = 1.6f;
     const float pictureDepth = 0.02f;
@@ -450,20 +477,20 @@ int main(void)
             (Vector3){ 0.0f, 1.0f, 0.0f },
                 0.0f,
                 (Vector3){ doorWidth, doorHeight, 0.04f },
-            doorColor);
+            smokyAluminumDoorColor);
         DrawModelEx(door,
                 (Vector3){ outdoorDoorCenterX, doorHeight*0.5f, roomHalfZ - 0.03f },
             (Vector3){ 0.0f, 1.0f, 0.0f },
             0.0f,
             (Vector3){ doorWidth, doorHeight, 0.04f },
-            doorColor);
+            smokyAluminumDoorColor);
 
         DrawModelEx(door,
                 (Vector3){ endDoorCenterX, doorHeight*0.5f, -roomHalfZ + 0.03f },
             (Vector3){ 0.0f, 1.0f, 0.0f },
             0.0f,
             (Vector3){ doorWidth, doorHeight, 0.04f },
-            beigeDoorColor);
+            northDoorColor);
 
         // Paintings around the gallery perimeter
         for (int i = 0; i < artworkCount; i++)
@@ -492,11 +519,7 @@ int main(void)
     UnloadModel(wall);
     UnloadModel(door);
     UnloadModel(picture);
-    for (int i = 0; i < artworkCount; i++)
-    {
-        UnloadImage(artworkImages[i]);
-        UnloadTexture(artworkTextures[i]);
-    }
+    for (int i = 0; i < artworkCount; i++) UnloadTexture(artworkTextures[i]);
 
     // De-Initialization
     CloseWindow(); // Close the window and OpenGL context

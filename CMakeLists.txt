@@ -32,6 +32,8 @@ if (EMSCRIPTEN)
     set_target_properties(animation PROPERTIES SUFFIX ".html")
     target_link_options(animation PRIVATE
         "SHELL:-sASYNCIFY"
+        "SHELL:-sALLOW_MEMORY_GROWTH=1"
+        "SHELL:-sINITIAL_MEMORY=134217728"
         "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/assets@/assets"
     )
 endif()
