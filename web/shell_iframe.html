@@ -36,7 +36,7 @@
         justify-content: center;
         background: #0b0b0b;
         z-index: 2;
-        transition: opacity 220ms ease;
+        transition: opacity 420ms ease;
       }
 
       #loading.is-hidden {
@@ -157,7 +157,7 @@
       const loadingElement = document.getElementById('loading');
       const canvasElement = document.getElementById('canvas');
       const touchButtons = Array.from(document.querySelectorAll('.control-button'));
-      const minimumLoadingDurationMs = 3000;
+      const minimumLoadingDurationMs = 5000;
       const loadingStartedAt = Date.now();
       const scrollBlockingKeys = new Set([
         'ArrowUp',
