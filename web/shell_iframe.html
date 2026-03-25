@@ -63,13 +63,12 @@
 
       #touch-controls {
         position: absolute;
-        left: 50%;
-        bottom: 8px;
-        transform: translateX(-50%);
+        right: 4px;
+        bottom: 4px;
         display: grid;
         grid-template-columns: repeat(3, 56px);
         grid-template-rows: repeat(3, 56px);
-        gap: 4px;
+        gap: 2px;
         z-index: 3;
         pointer-events: none;
       }
@@ -126,11 +125,11 @@
 
       @media (max-width: 520px) {
         #touch-controls {
-          left: 50%;
-          bottom: 6px;
+          right: 3px;
+          bottom: 3px;
           grid-template-columns: repeat(3, 50px);
           grid-template-rows: repeat(3, 50px);
-          gap: 3px;
+          gap: 2px;
         }
 
         .control-button {
