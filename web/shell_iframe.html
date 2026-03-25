@@ -12,6 +12,9 @@
         height: 100%;
         overflow: hidden;
         background: #000;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
       }
 
       body {
@@ -26,6 +29,9 @@
         max-width: 800px;
         max-height: 600px;
         overflow: hidden;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
       }
 
       #loading {
@@ -59,6 +65,9 @@
         height: 100%;
         border: 0;
         background: #000;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
       }
 
       #touch-controls {
@@ -86,8 +95,12 @@
         box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
         pointer-events: auto;
         touch-action: none;
+        appearance: none;
+        -webkit-appearance: none;
         user-select: none;
         -webkit-user-select: none;
+        -webkit-touch-callout: none;
+        -webkit-user-drag: none;
         -webkit-tap-highlight-color: transparent;
       }
 
@@ -188,6 +201,18 @@
         }
       }
 
+      function clearSelection() {
+        const selection = window.getSelection ? window.getSelection() : null;
+        if (selection && selection.rangeCount > 0) {
+          selection.removeAllRanges();
+        }
+      }
+
+      function preventTouchBehavior(event) {
+        event.preventDefault();
+        clearSelection();
+      }
+
       function setVirtualControlState(control, isPressed) {
         if (typeof Module !== 'object') return;
         if (typeof Module._SetVirtualControlState !== 'function') return;
@@ -248,6 +273,7 @@
         if (activePointers.has(event.pointerId)) return;
 
         event.preventDefault();
+        clearSelection();
         focusCanvas();
         activePointers.set(event.pointerId, button);
         button.setPointerCapture(event.pointerId);
@@ -261,11 +287,13 @@
         event.preventDefault();
         activePointers.delete(event.pointerId);
         releaseControl(button);
+        clearSelection();
       }
 
       window.addEventListener('pointerdown', focusCanvas, { passive: true });
       window.addEventListener('touchstart', focusCanvas, { passive: true });
       window.addEventListener('blur', releaseAllControls);
+      document.addEventListener('selectionchange', clearSelection);
       document.addEventListener('visibilitychange', () => {
         if (document.hidden) releaseAllControls();
       });
@@ -281,6 +309,12 @@
         button.addEventListener('pointerup', handleControlEnd);
         button.addEventListener('pointercancel', handleControlEnd);
         button.addEventListener('lostpointercapture', handleControlEnd);
+        button.addEventListener('touchstart', preventTouchBehavior, { passive: false });
+        button.addEventListener('touchmove', preventTouchBehavior, { passive: false });
+        button.addEventListener('touchend', preventTouchBehavior, { passive: false });
+        button.addEventListener('touchcancel', preventTouchBehavior, { passive: false });
+        button.addEventListener('dragstart', (event) => event.preventDefault());
+        button.addEventListener('selectstart', (event) => event.preventDefault());
         button.addEventListener('contextmenu', (event) => event.preventDefault());
       }
 
