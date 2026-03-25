@@ -67,7 +67,7 @@
       <div id="loading">
         <img src="loading-artwork.jpg" alt="Loading artwork">
       </div>
-      <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+      <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="0"></canvas>
     </div>
 
     <script>
@@ -75,6 +75,17 @@
       const canvasElement = document.getElementById('canvas');
       const minimumLoadingDurationMs = 3000;
       const loadingStartedAt = Date.now();
+      const scrollBlockingKeys = new Set([
+        'ArrowUp',
+        'ArrowDown',
+        'ArrowLeft',
+        'ArrowRight',
+        ' ',
+        'PageUp',
+        'PageDown',
+        'Home',
+        'End'
+      ]);
       let appReadyToShow = false;
       let loadingHidden = false;
 
@@ -82,6 +93,21 @@
         console.error('WebGL context lost. Reload the page to restore it.');
         event.preventDefault();
       }, false);
+
+      function focusCanvas() {
+        canvasElement.focus({ preventScroll: true });
+      }
+
+      window.addEventListener('pointerdown', focusCanvas, { passive: true });
+      window.addEventListener('touchstart', focusCanvas, { passive: true });
+      window.addEventListener('keydown', (event) => {
+        if (scrollBlockingKeys.has(event.key)) {
+          event.preventDefault();
+          focusCanvas();
+        }
+      }, { capture: true });
+
+      focusCanvas();
 
       function hideLoading() {
         if (loadingHidden) return;
