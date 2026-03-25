@@ -187,10 +187,8 @@
     <script>
       const viewportElement = document.getElementById('viewport');
       const loadingElement = document.getElementById('loading');
-      const loadingImageElement = loadingElement.querySelector('img');
       const canvasElement = document.getElementById('canvas');
       const touchButtons = Array.from(document.querySelectorAll('.control-button'));
-      const minimumLoadingDurationMs = 2000;
       const scrollBlockingKeys = new Set([
         'ArrowUp',
         'ArrowDown',
@@ -206,7 +204,6 @@
       const pressedControlCounts = new Map();
       let appReadyToShow = false;
       let loadingHidden = false;
-      let loadingArtworkShownAt = null;
 
       canvasElement.addEventListener('webglcontextlost', (event) => {
         console.error('WebGL context lost. Reload the page to restore it.');
@@ -226,12 +223,6 @@
         if (selection && selection.rangeCount > 0) {
           selection.removeAllRanges();
         }
-      }
-
-      function markLoadingArtworkShown() {
-        if (loadingArtworkShownAt !== null) return;
-        loadingArtworkShownAt = Date.now();
-        tryHideLoading();
       }
 
       function preventTouchBehavior(event) {
@@ -344,13 +335,6 @@
         button.addEventListener('contextmenu', (event) => event.preventDefault());
       }
 
-      if (loadingImageElement.complete) {
-        markLoadingArtworkShown();
-      } else {
-        loadingImageElement.addEventListener('load', markLoadingArtworkShown, { once: true });
-        loadingImageElement.addEventListener('error', markLoadingArtworkShown, { once: true });
-      }
-
       focusCanvas();
 
       function hideLoading() {
@@ -361,16 +345,7 @@
       }
 
       function tryHideLoading() {
-        if (!appReadyToShow || loadingArtworkShownAt === null) return;
-
-        const elapsed = Date.now() - loadingArtworkShownAt;
-        const remaining = minimumLoadingDurationMs - elapsed;
-
-        if (remaining > 0) {
-          window.setTimeout(hideLoading, remaining);
-          return;
-        }
-
+        if (!appReadyToShow) return;
         hideLoading();
       }
 
