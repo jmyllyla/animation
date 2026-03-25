@@ -53,6 +53,8 @@ static bool ParseArtworkDimensionsCm(const char *path, float *widthCm, float *he
     return false;
 }
 
+static float Clamp01(float value);
+
 static void ResizeArtworkImageForWeb(Image *image)
 {
 #if defined(PLATFORM_WEB)
@@ -73,6 +75,73 @@ static void ResizeArtworkImageForWeb(Image *image)
 #else
     (void)image;
 #endif
+}
+
+static unsigned int Hash2D(unsigned int x, unsigned int y)
+{
+    unsigned int hash = x*374761393u + y*668265263u;
+    hash = (hash ^ (hash >> 13))*1274126177u;
+    return hash ^ (hash >> 16);
+}
+
+static float Hash01(unsigned int x, unsigned int y)
+{
+    return (float)(Hash2D(x, y) & 0x00ffffffu)/(float)0x01000000u;
+}
+
+static unsigned char ClampColorComponent(int value)
+{
+    if (value < 0) return 0;
+    if (value > 255) return 255;
+    return (unsigned char)value;
+}
+
+static Texture2D CreateWallTexture(void)
+{
+    const int textureSize = 192;
+    Color *pixels = (Color *)MemAlloc(textureSize*textureSize*sizeof(Color));
+
+    for (int y = 0; y < textureSize; y++)
+    {
+        for (int x = 0; x < textureSize; x++)
+        {
+            float u = ((float)x + 0.5f)/(float)textureSize;
+            float v = ((float)y + 0.5f)/(float)textureSize;
+            float edgeDistance = fminf(fminf(u, 1.0f - u), fminf(v, 1.0f - v));
+            float panelFrame = Clamp01((0.06f - edgeDistance)/0.06f);
+            float centerLift = sinf(u*PI)*sinf(v*PI);
+            float coarseNoise = Hash01((unsigned int)(x/10), (unsigned int)(y/10))*2.0f - 1.0f;
+            float fineNoise = Hash01((unsigned int)x, (unsigned int)y)*2.0f - 1.0f;
+            float brushedVariation = sinf((float)x*0.18f + Hash01(0u, (unsigned int)(y/12))*PI)*0.6f
+                + sinf((float)y*0.09f)*0.35f;
+            float brightness = 244.7f
+                + centerLift*0.7f
+                - panelFrame*1.2f
+                + coarseNoise*0.55f
+                + fineNoise*0.18f
+                + brushedVariation*0.22f;
+            int shade = (int)roundf(brightness);
+            pixels[y*textureSize + x] = (Color){
+                ClampColorComponent(shade),
+                ClampColorComponent(shade),
+                ClampColorComponent(shade - 1),
+                255
+            };
+        }
+    }
+
+    Image textureImage = {
+        .data = pixels,
+        .width = textureSize,
+        .height = textureSize,
+        .mipmaps = 1,
+        .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8,
+    };
+    Texture2D texture = LoadTextureFromImage(textureImage);
+    UnloadImage(textureImage);
+    SetTextureFilter(texture, TEXTURE_FILTER_BILINEAR);
+
+    return texture;
 }
 
 #if defined(PLATFORM_WEB)
@@ -265,6 +334,8 @@ int main(void)
         UnloadImage(artworkImage);
     }
     Model wall = LoadModelFromMesh(GenMeshCube(1.0f, 1.0f, 1.0f));
+    Texture2D wallTexture = CreateWallTexture();
+    SetMaterialTexture(&wall.materials[0], MATERIAL_MAP_DIFFUSE, wallTexture);
     Model door = LoadModelFromMesh(GenMeshCube(1.0f, 1.0f, 1.0f));
     Model picture = LoadModelFromMesh(GenMeshCube(1.0f, 1.0f, 1.0f));
     SetMaterialTexture(&picture.materials[0], MATERIAL_MAP_DIFFUSE, artworkTextures[0]);
@@ -295,7 +366,7 @@ int main(void)
     const Color wallColor = (Color){ 245, 243, 238, 255 };   // natural warm white
     const Color cornerColor = (Color){ 72, 76, 82, 255 };    // dark gray corner accents
     const Color smokyAluminumDoorColor = (Color){ 142, 147, 152, 255 };
-    const Color northDoorColor = (Color){ 236, 236, 234, 255 };
+    const Color northDoorColor = (Color){ 228, 227, 224, 255 };
     const Color windowFrameColor = (Color){ 250, 250, 247, 255 };
     const float pictureY = 1.6f;
     const float pictureDepth = 0.02f;
@@ -679,6 +750,7 @@ int main(void)
     UnloadModel(wall);
     UnloadModel(door);
     UnloadModel(picture);
+    UnloadTexture(wallTexture);
     for (int i = 0; i < artworkCount; i++) UnloadTexture(artworkTextures[i]);
 
     // De-Initialization
