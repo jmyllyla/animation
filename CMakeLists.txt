@@ -29,7 +29,7 @@ target_include_directories(animation PRIVATE ${raylib_SOURCE_DIR}/src)
 target_link_libraries(animation raylib)
 
 if (EMSCRIPTEN)
-    set(LOADING_ARTWORK_SOURCE "${CMAKE_SOURCE_DIR}/assets/17-journeys-of-light-and-shadow-48x64cm.jpg")
+    set(LOADING_ARTWORK_SOURCE "${CMAKE_SOURCE_DIR}/galleria.jpg")
     set_target_properties(animation PROPERTIES SUFFIX ".html")
     set_property(TARGET animation APPEND PROPERTY LINK_DEPENDS
         "${CMAKE_SOURCE_DIR}/web/shell_iframe.html"
