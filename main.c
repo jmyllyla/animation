@@ -397,23 +397,8 @@ int main(void)
         (Vector3){ roomHalfX - pictureInset, pictureY, 2.75f },
         (Vector3){ -roomHalfX + vestibuleWidth + pictureInset, pictureY, roomHalfZ - vestibuleDepth*0.5f },
     };
-    const Vector3 artworkRotations[artworkCount] = {
-        (Vector3){ 0.0f, 1.0f, 0.0f }, (Vector3){ 0.0f, 1.0f, 0.0f },
-        (Vector3){ 0.0f, 1.0f, 0.0f }, (Vector3){ 0.0f, 1.0f, 0.0f },
-        (Vector3){ 0.0f, 1.0f, 0.0f }, (Vector3){ 0.0f, 1.0f, 0.0f },
-        (Vector3){ 0.0f, 1.0f, 0.0f }, (Vector3){ 0.0f, 1.0f, 0.0f },
-        (Vector3){ 0.0f, 1.0f, 0.0f }, (Vector3){ 0.0f, 1.0f, 0.0f },
-        (Vector3){ 0.0f, 1.0f, 0.0f }, (Vector3){ 0.0f, 1.0f, 0.0f },
-        (Vector3){ 0.0f, 1.0f, 0.0f }, (Vector3){ 0.0f, 1.0f, 0.0f },
-        (Vector3){ 0.0f, 1.0f, 0.0f }, (Vector3){ 0.0f, 1.0f, 0.0f },
-        (Vector3){ 0.0f, 1.0f, 0.0f },
-    };
-    const float artworkAngles[artworkCount] = {
-        0.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 0.0f, 0.0f,
-    };
+    const Vector3 artworkRotationAxis = (Vector3){ 0.0f, 1.0f, 0.0f };
+    const float artworkRotationAngle = 0.0f;
     bool showCorners = true;
 
     // Main game loop
@@ -735,8 +720,8 @@ int main(void)
             SetMaterialTexture(&picture.materials[0], MATERIAL_MAP_DIFFUSE, artworkTextures[i]);
             DrawModelEx(picture,
                 artworkPositions[i],
-                artworkRotations[i],
-                artworkAngles[i],
+                artworkRotationAxis,
+                artworkRotationAngle,
                 pictureScale,
                 WHITE);
         }
