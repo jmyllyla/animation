@@ -17,6 +17,25 @@ typedef struct{
     unsigned char *fileName; 
 } image_t;
 
+static bool ParseArtworkDimensionsCm(const char *path, float *widthCm, float *heightCm)
+{
+    int width = 0;
+    int height = 0;
+    int consumed = 0;
+
+    for (const char *cursor = path; *cursor != '\0'; cursor++)
+    {
+        if (sscanf(cursor, "%dx%dcm%n", &width, &height, &consumed) == 2)
+        {
+            *widthCm = (float)width;
+            *heightCm = (float)height;
+            return true;
+        }
+    }
+
+    return false;
+}
+
 int main(void)
 {
     InitWindow(WIDTH, HEIGHT, "Minimal Raylib Example");
@@ -30,20 +49,58 @@ int main(void)
     camera.fovy = 45.0f;
     camera.projection = CAMERA_PERSPECTIVE;
 
-    // Custom orbit parameters
-    float orbitAngle = 0.0f;
-    const float orbitRadius = 3.0f;
-    const float orbitHeight = 1.6f;
-    const float orbitSpeed = 0.1f;  // radians per second
+    const float cameraEyeHeight = 1.6f;
+    float cameraYaw = PI;
+    const float cameraTurnSpeed = 1.6f;   // radians per second
+    const float cameraMoveSpeed = 2.0f;   // world units per second
+    const float cameraLookDrop = 0.15f;
 
-    Image image = LoadImage("IMG_1.jpeg");
-    ImageFlipVertical(&image);
-    Texture2D texture = LoadTextureFromImage(image);
+    const char *artworkPaths[] = {
+        "assets/01-linnut-lampi-56x38cm.jpg",
+        "assets/02-irina-rebnitskaya-syksy-76x56cm-2024.jpg",
+        "assets/03-amur-and-psyke-56x38cm.jpg",
+        "assets/04-joutsen-lampi-38x56cm.jpg",
+        "assets/05-sergey-38x56cm.jpg",
+        "assets/06-untitled-38x56cm.jpg",
+        "assets/07-suihkulahde-38x56cm.jpg",
+        "assets/08-suihkulahde-38x56cm.jpg",
+        "assets/09-irina-rebnitskaya-afina-38x56cm-2025.jpg",
+        "assets/10-gate-38x56cm.jpg",
+        "assets/11-kahvila-38x56cm.jpg",
+        "assets/12-aristotel-38x56cm.jpg",
+        "assets/13-mama-38x56cm.jpg",
+        "assets/14-proserpina-38x56cm.jpg",
+        "assets/15-sun-38x56cm.jpg",
+        "assets/16-maunon-puutarha-56x38cm.jpg",
+    };
+    const int artworkCount = (int)(sizeof(artworkPaths)/sizeof(artworkPaths[0]));
+    Image artworkImages[16] = { 0 };
+    Texture2D artworkTextures[16] = { 0 };
+    float artworkWidthCm[16] = { 0 };
+    float artworkHeightCm[16] = { 0 };
+    for (int i = 0; i < artworkCount; i++)
+    {
+        artworkImages[i] = LoadImage(artworkPaths[i]);
+        if (!ParseArtworkDimensionsCm(artworkPaths[i], &artworkWidthCm[i], &artworkHeightCm[i]))
+        {
+            artworkWidthCm[i] = (float)artworkImages[i].width;
+            artworkHeightCm[i] = (float)artworkImages[i].height;
+        }
+        ImageFlipVertical(&artworkImages[i]);
+        if (i == 8)
+        {
+            ImageFlipHorizontal(&artworkImages[i]);
+        }
+        if (i == 4)
+        {
+            ImageRotateCCW(&artworkImages[i]);
+        }
+        artworkTextures[i] = LoadTextureFromImage(artworkImages[i]);
+    }
     Model wall = LoadModelFromMesh(GenMeshCube(1.0f, 1.0f, 1.0f));
     Model door = LoadModelFromMesh(GenMeshCube(1.0f, 1.0f, 1.0f));
-    Model frame = LoadModelFromMesh(GenMeshCube(1.0f, 1.0f, 1.0f));
     Model picture = LoadModelFromMesh(GenMeshCube(1.0f, 1.0f, 1.0f));
-    SetMaterialTexture(&picture.materials[0], MATERIAL_MAP_DIFFUSE, texture);
+    SetMaterialTexture(&picture.materials[0], MATERIAL_MAP_DIFFUSE, artworkTextures[0]);
     const float sizeScale = 1.5f;     // make walls 50% longer
     const float roomWidth = 6.2f*sizeScale;     // north wall length on X-axis
     const float roomDepth = 4.7f*sizeScale;     // side wall length on Z-axis
@@ -55,37 +112,97 @@ int main(void)
     // Small corner room (south-west vestibule)
     const float vestibuleWidth = 1.6f*sizeScale;    // along X into room
     const float vestibuleDepth = 1.4f*sizeScale;    // along Z into room
+    const float vestibuleGalleryWallZ = roomHalfZ - vestibuleDepth;
     const float doorWidth = 1.0f;
     const float doorHeight = 2.2f;
     const float outdoorDoorCenterX = -roomHalfX + vestibuleWidth*0.5f; // on south outer wall
     const float insideDoorCenterX = outdoorDoorCenterX;                 // straight-through with outdoor door
-    const float endDoorCenterX = outdoorDoorCenterX + doorWidth*0.5f;   // shifted right by half door width
-    const float windowSillHeight = 1.08f;
+    const float endDoorOffsetX = 0.15f;
+    const float endDoorCenterX = outdoorDoorCenterX + doorWidth*0.5f + endDoorOffsetX;
+    const float windowSillHeight = 0.66f;
     const float windowTopHeight = 2.6f;
     const float southPierWidth = 0.25f; // small wall between door and window area
     const float windowJambWidth = 0.2f;
+    const float windowFrameWidth = 0.07f;
     const float cornerAccentSize = 0.07f;
     const Color wallColor = (Color){ 245, 243, 238, 255 };   // natural warm white
     const Color cornerColor = (Color){ 72, 76, 82, 255 };    // dark gray corner accents
     const Color doorColor = (Color){ 160, 120, 80, 255 };
     const Color beigeDoorColor = (Color){ 210, 190, 155, 255 };
-    const Color frameColor = (Color){ 110, 85, 60, 255 };    // wood-like brown
+    const Color windowFrameColor = (Color){ 250, 250, 247, 255 };
     const float pictureY = 1.6f;
-    const float frameDepth = 0.08f;
-    const float pictureDepth = 0.03f;
-    const float frameInset = 0.12f;    // distance from wall center toward room interior
-    const float pictureInset = 0.18f;  // slightly more interior than frame so image stays visible
+    const float pictureDepth = 0.02f;
+    const float pictureInset = 0.12f;
     const Color floorColor = (Color){ 150, 155, 160, 255 };  // muted medium gray
+    const float centimetersToWorld = 0.016f;
+    const bool artworkOnZWall[16] = {
+        false, false, false,
+        true, true, true, true, true, true, true,
+        false, false, false, false, false, false,
+    };
+    const Vector3 artworkPositions[16] = {
+        (Vector3){ -roomHalfX + pictureInset, pictureY, -2.35f },
+        (Vector3){ -roomHalfX + pictureInset, pictureY, -1.00f },
+        (Vector3){ -roomHalfX + pictureInset, pictureY, 0.35f },
+        (Vector3){ -3.85f, pictureY, -roomHalfZ + pictureInset },
+        (Vector3){ -1.70f, pictureY, -roomHalfZ + pictureInset },
+        (Vector3){ -0.60f, pictureY, -roomHalfZ + pictureInset },
+        (Vector3){ 0.50f, pictureY, -roomHalfZ + pictureInset },
+        (Vector3){ 1.60f, pictureY, -roomHalfZ + pictureInset },
+        (Vector3){ 2.70f, pictureY, -roomHalfZ + pictureInset },
+        (Vector3){ 3.80f, pictureY, -roomHalfZ + pictureInset },
+        (Vector3){ roomHalfX - pictureInset, pictureY, -2.75f },
+        (Vector3){ roomHalfX - pictureInset, pictureY, -1.65f },
+        (Vector3){ roomHalfX - pictureInset, pictureY, -0.55f },
+        (Vector3){ roomHalfX - pictureInset, pictureY, 0.55f },
+        (Vector3){ roomHalfX - pictureInset, pictureY, 1.65f },
+        (Vector3){ roomHalfX - pictureInset, pictureY, 2.75f },
+    };
+    const Vector3 artworkRotations[16] = {
+        (Vector3){ 0.0f, 1.0f, 0.0f }, (Vector3){ 0.0f, 1.0f, 0.0f },
+        (Vector3){ 0.0f, 1.0f, 0.0f }, (Vector3){ 0.0f, 1.0f, 0.0f },
+        (Vector3){ 0.0f, 1.0f, 0.0f }, (Vector3){ 0.0f, 1.0f, 0.0f },
+        (Vector3){ 0.0f, 1.0f, 0.0f }, (Vector3){ 0.0f, 1.0f, 0.0f },
+        (Vector3){ 0.0f, 1.0f, 0.0f }, (Vector3){ 0.0f, 1.0f, 0.0f },
+        (Vector3){ 0.0f, 1.0f, 0.0f }, (Vector3){ 0.0f, 1.0f, 0.0f },
+        (Vector3){ 0.0f, 1.0f, 0.0f }, (Vector3){ 0.0f, 1.0f, 0.0f },
+        (Vector3){ 0.0f, 1.0f, 0.0f }, (Vector3){ 0.0f, 1.0f, 0.0f },
+    };
+    const float artworkAngles[16] = {
+        0.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 0.0f,
+    };
     bool showCorners = true;
 
     // Main game loop
     while (!WindowShouldClose())
     {
-        // Custom slow orbit around room center
-        orbitAngle += orbitSpeed * GetFrameTime();
-        camera.position.x = sinf(orbitAngle) * orbitRadius;
-        camera.position.z = cosf(orbitAngle) * orbitRadius;
-        camera.position.y = orbitHeight;
+        float frameTime = GetFrameTime();
+        Vector3 forward = { sinf(cameraYaw), 0.0f, cosf(cameraYaw) };
+
+        if (IsKeyDown(KEY_LEFT)) cameraYaw -= cameraTurnSpeed * frameTime;
+        if (IsKeyDown(KEY_RIGHT)) cameraYaw += cameraTurnSpeed * frameTime;
+
+        forward = (Vector3){ sinf(cameraYaw), 0.0f, cosf(cameraYaw) };
+        if (IsKeyDown(KEY_UP))
+        {
+            camera.position.x += forward.x * cameraMoveSpeed * frameTime;
+            camera.position.z += forward.z * cameraMoveSpeed * frameTime;
+        }
+        if (IsKeyDown(KEY_DOWN))
+        {
+            camera.position.x -= forward.x * cameraMoveSpeed * frameTime;
+            camera.position.z -= forward.z * cameraMoveSpeed * frameTime;
+        }
+
+        camera.position.y = cameraEyeHeight;
+        camera.target = (Vector3){
+            camera.position.x + forward.x,
+            camera.position.y - cameraLookDrop,
+            camera.position.z + forward.z
+        };
         if (IsKeyPressed(KEY_C)) showCorners = !showCorners;
 
         BeginDrawing();
@@ -180,6 +297,51 @@ int main(void)
             0.0f,
             (Vector3){ windowJambWidth, windowTopHeight - windowSillHeight, wallThickness },
             wallColor);
+
+        // White window frame split into three panes
+        float windowOpeningHeight = windowTopHeight - windowSillHeight;
+        float windowFrameZ = roomHalfZ - wallThickness*0.25f;
+        float windowFrameDepth = wallThickness*0.45f;
+        float windowPaneWidth = (windowLen - 4.0f*windowFrameWidth)/3.0f;
+        float windowMullion1X = windowStartX + windowPaneWidth + windowFrameWidth*1.5f;
+        float windowMullion2X = windowStartX + 2.0f*windowPaneWidth + windowFrameWidth*2.5f;
+
+        DrawModelEx(wall,
+            (Vector3){ windowStartX + windowLen*0.5f, windowSillHeight + windowFrameWidth*0.5f, windowFrameZ },
+            (Vector3){ 0.0f, 1.0f, 0.0f },
+            0.0f,
+            (Vector3){ windowLen, windowFrameWidth, windowFrameDepth },
+            windowFrameColor);
+        DrawModelEx(wall,
+            (Vector3){ windowStartX + windowLen*0.5f, windowTopHeight - windowFrameWidth*0.5f, windowFrameZ },
+            (Vector3){ 0.0f, 1.0f, 0.0f },
+            0.0f,
+            (Vector3){ windowLen, windowFrameWidth, windowFrameDepth },
+            windowFrameColor);
+        DrawModelEx(wall,
+            (Vector3){ windowStartX + windowFrameWidth*0.5f, windowSillHeight + windowOpeningHeight*0.5f, windowFrameZ },
+            (Vector3){ 0.0f, 1.0f, 0.0f },
+            0.0f,
+            (Vector3){ windowFrameWidth, windowOpeningHeight, windowFrameDepth },
+            windowFrameColor);
+        DrawModelEx(wall,
+            (Vector3){ roomHalfX - windowFrameWidth*0.5f, windowSillHeight + windowOpeningHeight*0.5f, windowFrameZ },
+            (Vector3){ 0.0f, 1.0f, 0.0f },
+            0.0f,
+            (Vector3){ windowFrameWidth, windowOpeningHeight, windowFrameDepth },
+            windowFrameColor);
+        DrawModelEx(wall,
+            (Vector3){ windowMullion1X, windowSillHeight + windowOpeningHeight*0.5f, windowFrameZ },
+            (Vector3){ 0.0f, 1.0f, 0.0f },
+            0.0f,
+            (Vector3){ windowFrameWidth, windowOpeningHeight, windowFrameDepth },
+            windowFrameColor);
+        DrawModelEx(wall,
+            (Vector3){ windowMullion2X, windowSillHeight + windowOpeningHeight*0.5f, windowFrameZ },
+            (Vector3){ 0.0f, 1.0f, 0.0f },
+            0.0f,
+            (Vector3){ windowFrameWidth, windowOpeningHeight, windowFrameDepth },
+            windowFrameColor);
 
         // Vestibule interior partition walls (forming the small corner room)
         float vestibuleX = -roomHalfX + vestibuleWidth;
@@ -303,93 +465,38 @@ int main(void)
             (Vector3){ doorWidth, doorHeight, 0.04f },
             beigeDoorColor);
 
-        // Framed pictures on each wall (scaled down)
-        // Back wall (z-) — 1 picture, centered
-        DrawModelEx(frame,
-            (Vector3){ 0.0f, pictureY, -roomHalfZ + frameInset },
-            (Vector3){ 0.0f, 1.0f, 0.0f },
-            0.0f,
-            (Vector3){ 1.4f, 1.1f, frameDepth },
-            frameColor);
-        DrawModelEx(picture,
-            (Vector3){ 0.0f, pictureY, -roomHalfZ + pictureInset },
-            (Vector3){ 0.0f, 1.0f, 0.0f },
-            0.0f,
-            (Vector3){ 1.1f, 0.8f, pictureDepth },
-            WHITE);
+        // Paintings around the gallery perimeter
+        for (int i = 0; i < artworkCount; i++)
+        {
+            float pictureWidth = artworkWidthCm[i]*centimetersToWorld;
+            float pictureHeight = artworkHeightCm[i]*centimetersToWorld;
+            Vector3 pictureScale = artworkOnZWall[i]
+                ? (Vector3){ pictureWidth, pictureHeight, pictureDepth }
+                : (Vector3){ pictureDepth, pictureHeight, pictureWidth };
 
-        // Left wall (x-) — 2 pictures, shifted north to avoid vestibule
-        DrawModelEx(frame,
-            (Vector3){ -roomHalfX + frameInset, pictureY, -1.8f },
-            (Vector3){ 0.0f, 1.0f, 0.0f },
-            0.0f,
-            (Vector3){ frameDepth, 1.1f, 1.4f },
-            frameColor);
-        DrawModelEx(picture,
-            (Vector3){ -roomHalfX + pictureInset, pictureY, -1.8f },
-            (Vector3){ 0.0f, 1.0f, 0.0f },
-            0.0f,
-            (Vector3){ pictureDepth, 0.8f, 1.1f },
-            WHITE);
-        DrawModelEx(frame,
-            (Vector3){ -roomHalfX + frameInset, pictureY, 0.2f },
-            (Vector3){ 0.0f, 1.0f, 0.0f },
-            0.0f,
-            (Vector3){ frameDepth, 1.1f, 1.4f },
-            frameColor);
-        DrawModelEx(picture,
-            (Vector3){ -roomHalfX + pictureInset, pictureY, 0.2f },
-            (Vector3){ 0.0f, 1.0f, 0.0f },
-            0.0f,
-            (Vector3){ pictureDepth, 0.8f, 1.1f },
-            WHITE);
-
-        // Right wall (x+) — 2 pictures, evenly spaced
-        DrawModelEx(frame,
-            (Vector3){ roomHalfX - frameInset, pictureY, -1.3f },
-            (Vector3){ 0.0f, 1.0f, 0.0f },
-            0.0f,
-            (Vector3){ frameDepth, 1.1f, 1.4f },
-            frameColor);
-        DrawModelEx(picture,
-            (Vector3){ roomHalfX - pictureInset, pictureY, -1.3f },
-            (Vector3){ 0.0f, 1.0f, 0.0f },
-            0.0f,
-            (Vector3){ pictureDepth, 0.8f, 1.1f },
-            WHITE);
-        DrawModelEx(frame,
-            (Vector3){ roomHalfX - frameInset, pictureY, 1.3f },
-            (Vector3){ 0.0f, 1.0f, 0.0f },
-            0.0f,
-            (Vector3){ frameDepth, 1.1f, 1.4f },
-            frameColor);
-        DrawModelEx(picture,
-            (Vector3){ roomHalfX - pictureInset, pictureY, 1.3f },
-            (Vector3){ 0.0f, 1.0f, 0.0f },
-            0.0f,
-            (Vector3){ pictureDepth, 0.8f, 1.1f },
-            WHITE);
+            SetMaterialTexture(&picture.materials[0], MATERIAL_MAP_DIFFUSE, artworkTextures[i]);
+            DrawModelEx(picture,
+                artworkPositions[i],
+                artworkRotations[i],
+                artworkAngles[i],
+                pictureScale,
+                WHITE);
+        }
 
         DrawGrid(20, 1.0f);
         EndMode3D();
-
-        char buffer[256];
-        long time = GetTime();
-        snprintf(buffer, sizeof(buffer), "%ld seconds", time);
-        DrawText(buffer, 20, 20, 20, LIGHTGRAY);
-        DrawText("Room scaled x1.5, straight-through vestibule doors, south wall mostly window", 20, 50, 18, GRAY);
-        DrawText("Mouse wheel: zoom | Right mouse: orbit", 20, 74, 18, GRAY);
-        DrawText("Press C: toggle corner accents", 20, 98, 18, GRAY);
 
         EndDrawing();
     }
 
     UnloadModel(wall);
     UnloadModel(door);
-    UnloadModel(frame);
     UnloadModel(picture);
-    UnloadImage(image);
-    UnloadTexture(texture);
+    for (int i = 0; i < artworkCount; i++)
+    {
+        UnloadImage(artworkImages[i]);
+        UnloadTexture(artworkTextures[i]);
+    }
 
     // De-Initialization
     CloseWindow(); // Close the window and OpenGL context

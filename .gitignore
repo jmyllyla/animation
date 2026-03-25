@@ -1,6 +1,7 @@
 build/*
 build-web/
 .vscode/*
+.DS_Store
 # Prerequisites
 *.d
 

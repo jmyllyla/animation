@@ -5,6 +5,7 @@ set(CMAKE_C_STANDARD 23)
 
 # Use FetchContent to download Raylib from GitHub
 include(FetchContent)
+set(FETCHCONTENT_UPDATES_DISCONNECTED ON)
 
 FetchContent_Declare(
     raylib
@@ -31,6 +32,6 @@ if (EMSCRIPTEN)
     set_target_properties(animation PROPERTIES SUFFIX ".html")
     target_link_options(animation PRIVATE
         "SHELL:-sASYNCIFY"
-        "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/IMG_1.jpeg@/IMG_1.jpeg"
+        "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/assets@/assets"
     )
 endif()
