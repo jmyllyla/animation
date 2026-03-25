@@ -3,6 +3,7 @@
 #include <math.h>
 
 #if defined(PLATFORM_WEB)
+    #include <emscripten/emscripten.h>
     #include <stdlib.h>
 #endif
 #define WIDTH 800
@@ -20,6 +21,18 @@ typedef struct{
     graphics header;
     unsigned char *fileName; 
 } image_t;
+
+typedef enum {
+    VirtualControlUp = 0,
+    VirtualControlDown,
+    VirtualControlLeft,
+    VirtualControlRight,
+    VirtualControlCount,
+} virtual_control_t;
+
+#if defined(PLATFORM_WEB)
+static bool virtualControlStates[VirtualControlCount] = { false };
+#endif
 
 static bool ParseArtworkDimensionsCm(const char *path, float *widthCm, float *heightCm)
 {
@@ -59,6 +72,39 @@ static void ResizeArtworkImageForWeb(Image *image)
     }
 #else
     (void)image;
+#endif
+}
+
+#if defined(PLATFORM_WEB)
+EMSCRIPTEN_KEEPALIVE
+void SetVirtualControlState(int control, int isPressed)
+{
+    if (control < 0 || control >= VirtualControlCount) return;
+    virtualControlStates[control] = (isPressed != 0);
+}
+
+EMSCRIPTEN_KEEPALIVE
+void ResetVirtualControls(void)
+{
+    for (int i = 0; i < VirtualControlCount; i++) virtualControlStates[i] = false;
+}
+#endif
+
+static bool IsControlDown(int key)
+{
+    bool pressed = IsKeyDown(key);
+
+#if defined(PLATFORM_WEB)
+    switch (key)
+    {
+        case KEY_UP: return pressed || virtualControlStates[VirtualControlUp];
+        case KEY_DOWN: return pressed || virtualControlStates[VirtualControlDown];
+        case KEY_LEFT: return pressed || virtualControlStates[VirtualControlLeft];
+        case KEY_RIGHT: return pressed || virtualControlStates[VirtualControlRight];
+        default: return pressed;
+    }
+#else
+    return pressed;
 #endif
 }
 
@@ -305,16 +351,16 @@ int main(void)
         float frameTime = GetFrameTime();
         Vector3 forward = { sinf(cameraYaw), 0.0f, cosf(cameraYaw) };
 
-        if (IsKeyDown(KEY_LEFT)) cameraYaw += cameraTurnSpeed * frameTime;
-        if (IsKeyDown(KEY_RIGHT)) cameraYaw -= cameraTurnSpeed * frameTime;
+        if (IsControlDown(KEY_LEFT)) cameraYaw += cameraTurnSpeed * frameTime;
+        if (IsControlDown(KEY_RIGHT)) cameraYaw -= cameraTurnSpeed * frameTime;
 
         forward = (Vector3){ sinf(cameraYaw), 0.0f, cosf(cameraYaw) };
-        if (IsKeyDown(KEY_UP))
+        if (IsControlDown(KEY_UP))
         {
             camera.position.x += forward.x * cameraMoveSpeed * frameTime;
             camera.position.z += forward.z * cameraMoveSpeed * frameTime;
         }
-        if (IsKeyDown(KEY_DOWN))
+        if (IsControlDown(KEY_DOWN))
         {
             camera.position.x -= forward.x * cameraMoveSpeed * frameTime;
             camera.position.z -= forward.z * cameraMoveSpeed * frameTime;

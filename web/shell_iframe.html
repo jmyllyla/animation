@@ -60,6 +60,83 @@
         border: 0;
         background: #000;
       }
+
+      #touch-controls {
+        position: absolute;
+        right: 16px;
+        bottom: 16px;
+        display: grid;
+        grid-template-columns: repeat(3, 56px);
+        grid-template-rows: repeat(3, 56px);
+        gap: 8px;
+        z-index: 3;
+        pointer-events: none;
+      }
+
+      .control-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 16px;
+        background: rgba(12, 12, 12, 0.72);
+        color: #f3f0e8;
+        font: 600 24px/1 system-ui, sans-serif;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+        pointer-events: auto;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .control-button.is-active {
+        background: rgba(241, 238, 229, 0.92);
+        color: #111;
+        transform: translateY(1px);
+      }
+
+      .control-up {
+        grid-column: 2;
+        grid-row: 1;
+      }
+
+      .control-left {
+        grid-column: 1;
+        grid-row: 2;
+      }
+
+      .control-right {
+        grid-column: 3;
+        grid-row: 2;
+      }
+
+      .control-down {
+        grid-column: 2;
+        grid-row: 3;
+      }
+
+      @media (pointer: fine) and (min-width: 801px) {
+        #touch-controls {
+          display: none;
+        }
+      }
+
+      @media (max-width: 520px) {
+        #touch-controls {
+          right: 12px;
+          bottom: 12px;
+          grid-template-columns: repeat(3, 50px);
+          grid-template-rows: repeat(3, 50px);
+          gap: 6px;
+        }
+
+        .control-button {
+          border-radius: 14px;
+          font-size: 22px;
+        }
+      }
     </style>
   </head>
   <body>
@@ -68,11 +145,18 @@
         <img src="loading-artwork.jpg" alt="Loading artwork">
       </div>
       <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="0"></canvas>
+      <div id="touch-controls" aria-label="Touch controls">
+        <button class="control-button control-up" type="button" data-control="0" aria-label="Move forward">&uarr;</button>
+        <button class="control-button control-left" type="button" data-control="2" aria-label="Turn left">&larr;</button>
+        <button class="control-button control-right" type="button" data-control="3" aria-label="Turn right">&rarr;</button>
+        <button class="control-button control-down" type="button" data-control="1" aria-label="Move backward">&darr;</button>
+      </div>
     </div>
 
     <script>
       const loadingElement = document.getElementById('loading');
       const canvasElement = document.getElementById('canvas');
+      const touchButtons = Array.from(document.querySelectorAll('.control-button'));
       const minimumLoadingDurationMs = 3000;
       const loadingStartedAt = Date.now();
       const scrollBlockingKeys = new Set([
@@ -86,6 +170,8 @@
         'Home',
         'End'
       ]);
+      const activePointers = new Map();
+      const pressedControlCounts = new Map();
       let appReadyToShow = false;
       let loadingHidden = false;
 
@@ -95,17 +181,108 @@
       }, false);
 
       function focusCanvas() {
-        canvasElement.focus({ preventScroll: true });
+        try {
+          canvasElement.focus({ preventScroll: true });
+        } catch (error) {
+          canvasElement.focus();
+        }
+      }
+
+      function setVirtualControlState(control, isPressed) {
+        if (typeof Module !== 'object') return;
+        if (typeof Module._SetVirtualControlState !== 'function') return;
+        Module._SetVirtualControlState(control, isPressed ? 1 : 0);
+      }
+
+      function syncAllVirtualControls() {
+        for (const button of touchButtons) {
+          const control = Number(button.dataset.control);
+          setVirtualControlState(control, (pressedControlCounts.get(control) || 0) > 0);
+        }
+      }
+
+      function resetVirtualControls() {
+        if (typeof Module !== 'object') return;
+        if (typeof Module._ResetVirtualControls !== 'function') return;
+        Module._ResetVirtualControls();
+      }
+
+      function pressControl(button) {
+        const control = Number(button.dataset.control);
+        const nextCount = (pressedControlCounts.get(control) || 0) + 1;
+        pressedControlCounts.set(control, nextCount);
+        button.classList.add('is-active');
+
+        if (nextCount === 1) {
+          setVirtualControlState(control, true);
+        }
+      }
+
+      function releaseControl(button) {
+        const control = Number(button.dataset.control);
+        const currentCount = pressedControlCounts.get(control) || 0;
+        if (currentCount <= 0) return;
+
+        const nextCount = currentCount - 1;
+        if (nextCount === 0) {
+          pressedControlCounts.delete(control);
+          button.classList.remove('is-active');
+          setVirtualControlState(control, false);
+          return;
+        }
+
+        pressedControlCounts.set(control, nextCount);
+      }
+
+      function releaseAllControls() {
+        for (const button of activePointers.values()) {
+          releaseControl(button);
+        }
+
+        activePointers.clear();
+        resetVirtualControls();
+      }
+
+      function handleControlStart(event) {
+        const button = event.currentTarget;
+        if (activePointers.has(event.pointerId)) return;
+
+        event.preventDefault();
+        focusCanvas();
+        activePointers.set(event.pointerId, button);
+        button.setPointerCapture(event.pointerId);
+        pressControl(button);
+      }
+
+      function handleControlEnd(event) {
+        const button = activePointers.get(event.pointerId);
+        if (!button) return;
+
+        event.preventDefault();
+        activePointers.delete(event.pointerId);
+        releaseControl(button);
       }
 
       window.addEventListener('pointerdown', focusCanvas, { passive: true });
       window.addEventListener('touchstart', focusCanvas, { passive: true });
+      window.addEventListener('blur', releaseAllControls);
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) releaseAllControls();
+      });
       window.addEventListener('keydown', (event) => {
         if (scrollBlockingKeys.has(event.key)) {
           event.preventDefault();
           focusCanvas();
         }
       }, { capture: true });
+
+      for (const button of touchButtons) {
+        button.addEventListener('pointerdown', handleControlStart);
+        button.addEventListener('pointerup', handleControlEnd);
+        button.addEventListener('pointercancel', handleControlEnd);
+        button.addEventListener('lostpointercapture', handleControlEnd);
+        button.addEventListener('contextmenu', (event) => event.preventDefault());
+      }
 
       focusCanvas();
 
@@ -149,6 +326,7 @@
           if (left === 0) markAppReady();
         },
         onRuntimeInitialized() {
+          syncAllVirtualControls();
           markAppReady();
         }
       };
