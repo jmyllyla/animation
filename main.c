@@ -98,11 +98,12 @@ int main(void)
         "assets/14-proserpina-38x56cm.jpg",
         "assets/15-sun-38x56cm.jpg",
         "assets/16-maunon-puutarha-56x38cm.jpg",
+        "assets/17-journeys-of-light-and-shadow-48x64cm.jpg",
     };
-    const int artworkCount = (int)(sizeof(artworkPaths)/sizeof(artworkPaths[0]));
-    Texture2D artworkTextures[16] = { 0 };
-    float artworkWidthCm[16] = { 0 };
-    float artworkHeightCm[16] = { 0 };
+    enum { artworkCount = (int)(sizeof(artworkPaths)/sizeof(artworkPaths[0])) };
+    Texture2D artworkTextures[artworkCount] = { 0 };
+    float artworkWidthCm[artworkCount] = { 0 };
+    float artworkHeightCm[artworkCount] = { 0 };
     for (int i = 0; i < artworkCount; i++)
     {
         Image artworkImage = LoadImage(artworkPaths[i]);
@@ -162,12 +163,13 @@ int main(void)
     const float pictureInset = 0.12f;
     const Color floorColor = (Color){ 150, 155, 160, 255 };  // muted medium gray
     const float centimetersToWorld = 0.016f;
-    const bool artworkOnZWall[16] = {
+    const bool artworkOnZWall[artworkCount] = {
         false, false, false,
         true, true, true, true, true, true, true,
         false, false, false, false, false, false,
+        false,
     };
-    const Vector3 artworkPositions[16] = {
+    const Vector3 artworkPositions[artworkCount] = {
         (Vector3){ -roomHalfX + pictureInset, pictureY, -2.35f },
         (Vector3){ -roomHalfX + pictureInset, pictureY, -1.00f },
         (Vector3){ -roomHalfX + pictureInset, pictureY, 0.35f },
@@ -184,8 +186,9 @@ int main(void)
         (Vector3){ roomHalfX - pictureInset, pictureY, 0.55f },
         (Vector3){ roomHalfX - pictureInset, pictureY, 1.65f },
         (Vector3){ roomHalfX - pictureInset, pictureY, 2.75f },
+        (Vector3){ -roomHalfX + vestibuleWidth + pictureInset, pictureY, roomHalfZ - vestibuleDepth*0.5f },
     };
-    const Vector3 artworkRotations[16] = {
+    const Vector3 artworkRotations[artworkCount] = {
         (Vector3){ 0.0f, 1.0f, 0.0f }, (Vector3){ 0.0f, 1.0f, 0.0f },
         (Vector3){ 0.0f, 1.0f, 0.0f }, (Vector3){ 0.0f, 1.0f, 0.0f },
         (Vector3){ 0.0f, 1.0f, 0.0f }, (Vector3){ 0.0f, 1.0f, 0.0f },
@@ -194,12 +197,13 @@ int main(void)
         (Vector3){ 0.0f, 1.0f, 0.0f }, (Vector3){ 0.0f, 1.0f, 0.0f },
         (Vector3){ 0.0f, 1.0f, 0.0f }, (Vector3){ 0.0f, 1.0f, 0.0f },
         (Vector3){ 0.0f, 1.0f, 0.0f }, (Vector3){ 0.0f, 1.0f, 0.0f },
+        (Vector3){ 0.0f, 1.0f, 0.0f },
     };
-    const float artworkAngles[16] = {
+    const float artworkAngles[artworkCount] = {
         0.0f, 0.0f, 0.0f, 0.0f,
         0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
         0.0f, 0.0f, 0.0f, 0.0f,
-        0.0f, 0.0f,
+        0.0f, 0.0f, 0.0f,
     };
     bool showCorners = true;
 
