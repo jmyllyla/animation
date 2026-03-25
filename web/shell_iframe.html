@@ -73,6 +73,10 @@
     <script>
       const loadingElement = document.getElementById('loading');
       const canvasElement = document.getElementById('canvas');
+      const minimumLoadingDurationMs = 3000;
+      const loadingStartedAt = Date.now();
+      let appReadyToShow = false;
+      let loadingHidden = false;
 
       canvasElement.addEventListener('webglcontextlost', (event) => {
         console.error('WebGL context lost. Reload the page to restore it.');
@@ -80,7 +84,29 @@
       }, false);
 
       function hideLoading() {
+        if (loadingHidden) return;
+        loadingHidden = true;
         loadingElement.classList.add('is-hidden');
+      }
+
+      function tryHideLoading() {
+        if (!appReadyToShow) return;
+
+        const elapsed = Date.now() - loadingStartedAt;
+        const remaining = minimumLoadingDurationMs - elapsed;
+
+        if (remaining > 0) {
+          window.setTimeout(hideLoading, remaining);
+          return;
+        }
+
+        hideLoading();
+      }
+
+      function markAppReady() {
+        if (appReadyToShow) return;
+        appReadyToShow = true;
+        tryHideLoading();
       }
 
       var Module = {
@@ -94,10 +120,10 @@
         totalDependencies: 0,
         monitorRunDependencies(left) {
           this.totalDependencies = Math.max(this.totalDependencies, left);
-          if (left === 0) hideLoading();
+          if (left === 0) markAppReady();
         },
         onRuntimeInitialized() {
-          hideLoading();
+          markAppReady();
         }
       };
 
