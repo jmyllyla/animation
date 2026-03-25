@@ -51,6 +51,7 @@ jobs:
           cp build-web/animation.js site/animation.js
           cp build-web/animation.wasm site/animation.wasm
           cp build-web/animation.data site/animation.data
+          cp build-web/loading-artwork.jpg site/loading-artwork.jpg
           touch site/.nojekyll
 
       - name: Upload GitHub Pages artifact

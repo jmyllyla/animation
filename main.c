@@ -43,7 +43,7 @@ static bool ParseArtworkDimensionsCm(const char *path, float *widthCm, float *he
 static void ResizeArtworkImageForWeb(Image *image)
 {
 #if defined(PLATFORM_WEB)
-    const int maxTextureEdge = 1024;
+    const int maxTextureEdge = 2048;
     int longestEdge = (image->width > image->height) ? image->width : image->height;
 
     if (longestEdge > maxTextureEdge)

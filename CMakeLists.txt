@@ -29,6 +29,7 @@ target_include_directories(animation PRIVATE ${raylib_SOURCE_DIR}/src)
 target_link_libraries(animation raylib)
 
 if (EMSCRIPTEN)
+    set(LOADING_ARTWORK_SOURCE "${CMAKE_SOURCE_DIR}/assets/17-journeys-of-light-and-shadow-48x64cm.jpg")
     set_target_properties(animation PROPERTIES SUFFIX ".html")
     target_link_options(animation PRIVATE
         "SHELL:-sASYNCIFY"
@@ -36,5 +37,10 @@ if (EMSCRIPTEN)
         "SHELL:-sINITIAL_MEMORY=134217728"
         "SHELL:--shell-file ${CMAKE_SOURCE_DIR}/web/shell_iframe.html"
         "SHELL:--preload-file ${CMAKE_SOURCE_DIR}/assets@/assets"
+    )
+    add_custom_command(TARGET animation POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${LOADING_ARTWORK_SOURCE}"
+            "${CMAKE_CURRENT_BINARY_DIR}/loading-artwork.jpg"
     )
 endif()
