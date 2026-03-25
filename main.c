@@ -209,8 +209,8 @@ int main(void)
         float frameTime = GetFrameTime();
         Vector3 forward = { sinf(cameraYaw), 0.0f, cosf(cameraYaw) };
 
-        if (IsKeyDown(KEY_LEFT)) cameraYaw -= cameraTurnSpeed * frameTime;
-        if (IsKeyDown(KEY_RIGHT)) cameraYaw += cameraTurnSpeed * frameTime;
+        if (IsKeyDown(KEY_LEFT)) cameraYaw += cameraTurnSpeed * frameTime;
+        if (IsKeyDown(KEY_RIGHT)) cameraYaw -= cameraTurnSpeed * frameTime;
 
         forward = (Vector3){ sinf(cameraYaw), 0.0f, cosf(cameraYaw) };
         if (IsKeyDown(KEY_UP))
