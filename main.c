@@ -450,7 +450,7 @@ int main(void)
         if (IsActionDown(KEY_RIGHT, VirtualControlTurnRight)) cameraYaw -= cameraTurnSpeed * frameTime;
 
         forward = (Vector3){ sinf(cameraYaw), 0.0f, cosf(cameraYaw) };
-        Vector3 right = { forward.z, 0.0f, -forward.x };
+        Vector3 right = { -forward.z, 0.0f, forward.x };
         if (IsActionDown(KEY_UP, VirtualControlMoveForward))
         {
             camera.position.x += forward.x * cameraMoveSpeed * frameTime;
