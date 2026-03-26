@@ -271,7 +271,7 @@ static float GetArtworkLookPitch(
 
 int main(void)
 {
-    InitWindow(WIDTH, HEIGHT, "Minimal Raylib Example");
+    InitWindow(WIDTH, HEIGHT, "Virtual Gallery");
 
     SetTargetFPS(60);
 
