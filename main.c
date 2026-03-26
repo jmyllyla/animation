@@ -196,6 +196,7 @@ static float GetArtworkLookPitch(
     const Vector3 *artworkPositions,
     const float *artworkWidthCm,
     const float *artworkHeightCm,
+    const float *artworkLookLiftFractions,
     const bool *artworkOnZWall,
     int artworkCount,
     float centimetersToWorld,
@@ -260,7 +261,8 @@ static float GetArtworkLookPitch(
         if (strength <= bestStrength) continue;
 
         float topInset = pictureHeight*0.38f;
-        float focusY = artworkPositions[i].y + pictureHeight*0.5f - topInset;
+        float focusY = artworkPositions[i].y + pictureHeight*0.5f - topInset
+            + pictureHeight*artworkLookLiftFractions[i];
         float projectedDistance = fmaxf(minimumProjectedDistance, toArtworkX*forward.x + toArtworkZ*forward.z);
         float desiredPitch = atan2f(focusY - cameraPosition.y, projectedDistance);
         if (desiredPitch > maxUpwardPitch) desiredPitch = maxUpwardPitch;
@@ -385,6 +387,12 @@ int main(void)
         false, false, false, false, false, false,
         false,
     };
+    const float artworkLookLiftFractions[artworkCount] = {
+        0.0f, 0.08f, 0.0f,
+        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+        0.0f,
+    };
     const float artwork17Drop = artworkHeightCm[artworkCount - 1]*centimetersToWorld*0.05f;
     const Vector3 artworkPositions[artworkCount] = {
         (Vector3){ -roomHalfX + pictureInset, pictureY, -2.35f },
@@ -417,6 +425,7 @@ int main(void)
         artworkPositions,
         artworkWidthCm,
         artworkHeightCm,
+        artworkLookLiftFractions,
         artworkOnZWall,
         artworkCount,
         centimetersToWorld,
@@ -464,6 +473,7 @@ int main(void)
             artworkPositions,
             artworkWidthCm,
             artworkHeightCm,
+            artworkLookLiftFractions,
             artworkOnZWall,
             artworkCount,
             centimetersToWorld,
