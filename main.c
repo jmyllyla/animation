@@ -286,7 +286,7 @@ int main(void)
     camera.projection = CAMERA_PERSPECTIVE;
 
     const float cameraEyeHeight = 1.6f;
-    float cameraYaw = PI;
+    float cameraYaw = 0.0f;
     const float cameraTurnSpeed = 1.6f;   // radians per second
     const float cameraMoveSpeed = 2.0f;   // world units per second
     const float cameraLookDrop = 0.15f;
@@ -385,6 +385,7 @@ int main(void)
         false, false, false, false, false, false,
         false,
     };
+    const float artwork17Drop = artworkHeightCm[artworkCount - 1]*centimetersToWorld*0.05f;
     const Vector3 artworkPositions[artworkCount] = {
         (Vector3){ -roomHalfX + pictureInset, pictureY, -2.35f },
         (Vector3){ -roomHalfX + pictureInset, pictureY, -1.00f },
@@ -402,7 +403,29 @@ int main(void)
         (Vector3){ roomHalfX - pictureInset, pictureY, 0.55f },
         (Vector3){ roomHalfX - pictureInset, pictureY, 1.65f },
         (Vector3){ roomHalfX - pictureInset, pictureY, 2.75f },
-        (Vector3){ -roomHalfX + vestibuleWidth + pictureInset, pictureY, roomHalfZ - vestibuleDepth*0.5f },
+        (Vector3){ -roomHalfX + vestibuleWidth + pictureInset, pictureY - artwork17Drop, roomHalfZ - vestibuleDepth*0.5f },
+    };
+    const int openingArtworkIndex = artworkCount - 1;
+    const float openingYawOffset = -10.0f*DEG2RAD;
+    cameraYaw = atan2f(
+        artworkPositions[openingArtworkIndex].x - camera.position.x,
+        artworkPositions[openingArtworkIndex].z - camera.position.z) + openingYawOffset;
+    Vector3 openingForward = { sinf(cameraYaw), 0.0f, cosf(cameraYaw) };
+    cameraPitch = GetArtworkLookPitch(
+        camera.position,
+        openingForward,
+        artworkPositions,
+        artworkWidthCm,
+        artworkHeightCm,
+        artworkOnZWall,
+        artworkCount,
+        centimetersToWorld,
+        baseLookPitch);
+    float openingLookForwardScale = cosf(cameraPitch);
+    camera.target = (Vector3){
+        camera.position.x + openingForward.x*openingLookForwardScale,
+        camera.position.y + sinf(cameraPitch),
+        camera.position.z + openingForward.z*openingLookForwardScale
     };
     const Vector3 artworkRotationAxis = (Vector3){ 0.0f, 1.0f, 0.0f };
     const float artworkRotationAngle = 0.0f;
