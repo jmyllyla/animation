@@ -202,10 +202,10 @@ static float GetArtworkLookPitch(
     float basePitch)
 {
     const float fullLookDistance = 0.85f;
-    const float maxAutoLookDistance = 2.2f;
+    const float maxAutoLookDistance = 2.64f;
     const float lateralFadeMargin = 0.75f;
-    const float minimumFacingDot = 0.35f;
-    const float minimumWallFacingDot = 0.7f;
+    const float minimumFacingDot = 0.30f;
+    const float minimumWallFacingDot = 0.60f;
     const float minimumProjectedDistance = 0.18f;
     const float maxUpwardPitch = PI/2.8f;
     float bestStrength = 0.0f;
@@ -370,14 +370,15 @@ int main(void)
     const float windowFrameWidth = 0.07f;
     const float cornerAccentSize = 0.07f;
     const Color wallColor = (Color){ 245, 243, 238, 255 };   // natural warm white
+    const Color outsideColor = (Color){ 226, 221, 213, 255 }; // warm light gray beyond the gallery
     const Color cornerColor = (Color){ 72, 76, 82, 255 };    // dark gray corner accents
-    const Color smokyAluminumDoorColor = (Color){ 142, 147, 152, 255 };
+    const Color smokyAluminumDoorColor = (Color){ 174, 177, 178, 255 }; // floor-adjacent gray with a smoky cast
     const Color northDoorColor = (Color){ 228, 227, 224, 255 };
     const Color windowFrameColor = (Color){ 250, 250, 247, 255 };
     const float pictureY = 1.6f;
     const float pictureDepth = 0.02f;
     const float pictureInset = 0.12f;
-    const Color floorColor = (Color){ 150, 155, 160, 255 };  // muted medium gray
+    const Color floorColor = (Color){ 182, 184, 180, 255 };  // lighter matte gray
     const bool artworkOnZWall[artworkCount] = {
         false, false, false,
         true, true, true, true, true, true, true,
@@ -460,7 +461,7 @@ int main(void)
         if (IsKeyPressed(KEY_C)) showCorners = !showCorners;
 
         BeginDrawing();
-        ClearBackground(BLACK);
+        ClearBackground(outsideColor);
 
         BeginMode3D(camera);
         DrawPlane((Vector3){ 0.0f, 0.0f, 0.0f }, (Vector2){ roomWidth, roomDepth }, floorColor);
