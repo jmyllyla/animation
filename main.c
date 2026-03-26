@@ -349,6 +349,8 @@ int main(void)
     const float roomHalfZ = roomDepth*0.5f;
     const float wallHeight = 3.0f;
     const float wallThickness = 0.2f;
+    const float cameraWallClearance = 30.0f*centimetersToWorld;
+    const float cameraBoundsInset = wallThickness*0.5f + cameraWallClearance;
 
     // Small corner room (south-west vestibule)
     const float vestibuleWidth = 1.6f*sizeScale;    // along X into room
@@ -470,6 +472,16 @@ int main(void)
         {
             camera.position.x += right.x * cameraMoveSpeed * frameTime;
             camera.position.z += right.z * cameraMoveSpeed * frameTime;
+        }
+
+        if (camera.position.x < -roomHalfX + cameraBoundsInset) {
+            camera.position.x = -roomHalfX + cameraBoundsInset;
+        }
+        if (camera.position.x > roomHalfX - cameraBoundsInset) {
+            camera.position.x = roomHalfX - cameraBoundsInset;
+        }
+        if (camera.position.z < -roomHalfZ + cameraBoundsInset) {
+            camera.position.z = -roomHalfZ + cameraBoundsInset;
         }
 
         camera.position.y = cameraEyeHeight;
