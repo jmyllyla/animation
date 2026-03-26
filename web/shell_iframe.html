@@ -77,12 +77,59 @@
         background: rgba(20, 20, 20, 0.56);
         color: rgba(245, 243, 238, 0.88);
         font: 500 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-        white-space: pre-line;
         text-align: left;
       }
 
       #loading.is-debug #loading-debug {
         display: block;
+      }
+
+      .loading-debug-line {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 1.45em;
+      }
+
+      .loading-debug-line + .loading-debug-line {
+        margin-top: 2px;
+      }
+
+      .loading-debug-line.is-gap {
+        min-height: 8px;
+      }
+
+      .loading-debug-marker {
+        width: 10px;
+        flex: 0 0 10px;
+        color: rgba(245, 243, 238, 0.72);
+      }
+
+      .loading-debug-text {
+        flex: 1 1 auto;
+      }
+
+      .loading-debug-time {
+        color: rgba(245, 243, 238, 0.6);
+      }
+
+      .loading-debug-cursor {
+        width: 10px;
+        height: 14px;
+        border-radius: 1px;
+        background: rgba(245, 243, 238, 0.92);
+        box-shadow: 0 0 0 1px rgba(245, 243, 238, 0.18);
+        animation: loading-debug-cursor-blink 1s steps(1, end) infinite;
+      }
+
+      @keyframes loading-debug-cursor-blink {
+        0%, 49% {
+          opacity: 1;
+        }
+
+        50%, 100% {
+          opacity: 0;
+        }
       }
 
       canvas {
@@ -315,23 +362,76 @@
         loadingLabelElement.textContent = loaderStatusLabels[stage] || 'Loading gallery...';
       }
 
+      function appendLoadingDebugLine(fragment, marker, text, timeText, showCursor) {
+        const line = document.createElement('div');
+        line.className = 'loading-debug-line';
+
+        const markerElement = document.createElement('span');
+        markerElement.className = 'loading-debug-marker';
+        markerElement.textContent = marker;
+        line.appendChild(markerElement);
+
+        const textElement = document.createElement('span');
+        textElement.className = 'loading-debug-text';
+        textElement.textContent = text;
+        line.appendChild(textElement);
+
+        if (timeText) {
+          const timeElement = document.createElement('span');
+          timeElement.className = 'loading-debug-time';
+          timeElement.textContent = timeText;
+          line.appendChild(timeElement);
+        }
+
+        if (showCursor) {
+          const cursorElement = document.createElement('span');
+          cursorElement.className = 'loading-debug-cursor';
+          cursorElement.setAttribute('aria-hidden', 'true');
+          line.appendChild(cursorElement);
+        }
+
+        fragment.appendChild(line);
+      }
+
       function renderLoaderDebug() {
         if (!loaderDebugEnabled) return;
 
-        const lines = [
-          getLoaderHideStageLabel(),
+        const fragment = document.createDocumentFragment();
+        let activeMissingStage = null;
+
+        for (const stage of loaderStageOrder) {
+          if (!recordedLoaderStages.has(stage)) {
+            activeMissingStage = stage;
+            break;
+          }
+        }
+
+        appendLoadingDebugLine(fragment, '', getLoaderHideStageLabel(), '', false);
+        appendLoadingDebugLine(
+          fragment,
+          '',
           loaderHoldMs > 0 ? `Extra hold: ${loaderHoldMs} ms` : 'Extra hold: none',
-          ''
-        ];
+          '',
+          false);
+
+        const gapLine = document.createElement('div');
+        gapLine.className = 'loading-debug-line is-gap';
+        gapLine.setAttribute('aria-hidden', 'true');
+        fragment.appendChild(gapLine);
 
         for (const stage of loaderStageOrder) {
           const elapsed = recordedLoaderStages.get(stage);
           const prefix = elapsed === undefined ? '·' : '✓';
-          const timeText = elapsed === undefined ? '' : ` ${formatLoaderTime(elapsed)}`;
-          lines.push(`${prefix} ${loaderStageLabels[stage]}${timeText}`);
+          const timeText = elapsed === undefined ? '' : formatLoaderTime(elapsed);
+          appendLoadingDebugLine(
+            fragment,
+            prefix,
+            loaderStageLabels[stage],
+            timeText,
+            stage === activeMissingStage);
         }
 
-        loadingDebugElement.textContent = lines.join('\n');
+        loadingDebugElement.replaceChildren(fragment);
       }
 
       function isHideStageSatisfied(stage) {
