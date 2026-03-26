@@ -32,6 +32,12 @@ typedef enum {
 
 #if defined(PLATFORM_WEB)
 static bool virtualControlStates[VirtualControlCount] = { false };
+
+EM_JS(void, ReportWebLoaderStage, (const char *stage), {
+    if (typeof window === 'undefined') return;
+    if (typeof window.__galleryLoaderStage !== 'function') return;
+    window.__galleryLoaderStage(UTF8ToString(stage));
+});
 #endif
 
 static bool ParseArtworkDimensionsCm(const char *path, float *widthCm, float *heightCm)
@@ -400,6 +406,11 @@ int main(void)
     const Vector3 artworkRotationAxis = (Vector3){ 0.0f, 1.0f, 0.0f };
     const float artworkRotationAngle = 0.0f;
     bool showCorners = true;
+#if defined(PLATFORM_WEB)
+    bool firstWebFrameReported = false;
+
+    ReportWebLoaderStage("native-assets-loaded");
+#endif
 
     // Main game loop
     while (!WindowShouldClose())
@@ -730,6 +741,14 @@ int main(void)
         EndMode3D();
 
         EndDrawing();
+
+#if defined(PLATFORM_WEB)
+        if (!firstWebFrameReported)
+        {
+            ReportWebLoaderStage("first-frame");
+            firstWebFrameReported = true;
+        }
+#endif
     }
 
     UnloadModel(wall);

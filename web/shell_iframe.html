@@ -68,6 +68,23 @@
         text-transform: uppercase;
       }
 
+      #loading-debug {
+        display: none;
+        width: min(82vw, 440px);
+        padding: 10px 12px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 12px;
+        background: rgba(20, 20, 20, 0.56);
+        color: rgba(245, 243, 238, 0.88);
+        font: 500 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        white-space: pre-line;
+        text-align: left;
+      }
+
+      #loading.is-debug #loading-debug {
+        display: block;
+      }
+
       canvas {
         display: block;
         width: 100%;
@@ -174,6 +191,7 @@
       <div id="loading">
         <img src="loading-artwork.jpg" alt="Loading artwork">
         <div id="loading-label">Loading gallery...</div>
+        <div id="loading-debug" aria-live="polite"></div>
       </div>
       <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="0"></canvas>
       <div id="touch-controls" aria-label="Touch controls">
@@ -187,8 +205,40 @@
     <script>
       const viewportElement = document.getElementById('viewport');
       const loadingElement = document.getElementById('loading');
+      const loadingImageElement = loadingElement.querySelector('img');
+      const loadingLabelElement = document.getElementById('loading-label');
+      const loadingDebugElement = document.getElementById('loading-debug');
       const canvasElement = document.getElementById('canvas');
       const touchButtons = Array.from(document.querySelectorAll('.control-button'));
+      const loaderParams = new URLSearchParams(window.location.search);
+      const loaderDebugEnabled = loaderParams.get('loader-debug') === '1';
+      const loaderHideStage = normalizeLoaderHideStage(loaderParams.get('loader-hide-stage'));
+      const loaderHoldMs = parseLoaderDelayMs(loaderParams.get('loader-hold-ms'));
+      const loaderStartTime = performance.now();
+      const loaderStageOrder = [
+        'shell-ready',
+        'loading-artwork-ready',
+        'dependencies-complete',
+        'runtime-initialized',
+        'native-assets-loaded',
+        'first-frame'
+      ];
+      const loaderStageLabels = {
+        'shell-ready': 'Shell ready',
+        'loading-artwork-ready': 'Splash artwork visible',
+        'dependencies-complete': 'Web dependencies complete',
+        'runtime-initialized': 'Runtime initialized',
+        'native-assets-loaded': 'Native assets loaded',
+        'first-frame': 'First gallery frame drawn'
+      };
+      const loaderStatusLabels = {
+        'shell-ready': 'Loading gallery...',
+        'loading-artwork-ready': 'Loading gallery...',
+        'dependencies-complete': 'Starting gallery...',
+        'runtime-initialized': 'Preparing artwork...',
+        'native-assets-loaded': 'Rendering gallery...',
+        'first-frame': 'Opening gallery...'
+      };
       const scrollBlockingKeys = new Set([
         'ArrowUp',
         'ArrowDown',
@@ -202,13 +252,110 @@
       ]);
       const activePointers = new Map();
       const pressedControlCounts = new Map();
-      let appReadyToShow = false;
+      const recordedLoaderStages = new Map();
       let loadingHidden = false;
+      let hideSignalReceived = false;
+      let hideScheduled = false;
+
+      if (loaderDebugEnabled) {
+        loadingElement.classList.add('is-debug');
+      }
 
       canvasElement.addEventListener('webglcontextlost', (event) => {
         console.error('WebGL context lost. Reload the page to restore it.');
         event.preventDefault();
       }, false);
+
+      function parseLoaderDelayMs(value) {
+        const parsed = Number.parseInt(value || '', 10);
+        if (!Number.isFinite(parsed) || parsed < 0) return 0;
+        return parsed;
+      }
+
+      function normalizeLoaderHideStage(value) {
+        const normalized = (value || 'runtime').trim().toLowerCase();
+        switch (normalized) {
+          case 'deps':
+          case 'dependencies':
+            return 'dependencies-complete';
+          case 'init':
+          case 'runtime':
+          case 'runtime-ready':
+            return 'runtime-ready';
+          case 'assets':
+          case 'native-assets':
+            return 'native-assets-loaded';
+          case 'frame':
+          case 'first-frame':
+            return 'first-frame';
+          case 'image':
+          case 'artwork':
+            return 'loading-artwork-ready';
+          default:
+            return 'runtime-ready';
+        }
+      }
+
+      function getLoaderHideStageLabel() {
+        switch (loaderHideStage) {
+          case 'dependencies-complete': return 'Hide on web dependencies complete';
+          case 'runtime-ready': return 'Hide on runtime ready';
+          case 'native-assets-loaded': return 'Hide on native assets loaded';
+          case 'first-frame': return 'Hide on first gallery frame';
+          case 'loading-artwork-ready': return 'Hide when splash artwork is ready';
+          default: return 'Hide on runtime ready';
+        }
+      }
+
+      function formatLoaderTime(ms) {
+        return `${(ms/1000).toFixed(ms < 10000 ? 1 : 0)}s`;
+      }
+
+      function updateLoadingLabel(stage) {
+        loadingLabelElement.textContent = loaderStatusLabels[stage] || 'Loading gallery...';
+      }
+
+      function renderLoaderDebug() {
+        if (!loaderDebugEnabled) return;
+
+        const lines = [
+          getLoaderHideStageLabel(),
+          loaderHoldMs > 0 ? `Extra hold: ${loaderHoldMs} ms` : 'Extra hold: none',
+          ''
+        ];
+
+        for (const stage of loaderStageOrder) {
+          const elapsed = recordedLoaderStages.get(stage);
+          const prefix = elapsed === undefined ? '·' : '✓';
+          const timeText = elapsed === undefined ? '' : ` ${formatLoaderTime(elapsed)}`;
+          lines.push(`${prefix} ${loaderStageLabels[stage]}${timeText}`);
+        }
+
+        loadingDebugElement.textContent = lines.join('\n');
+      }
+
+      function isHideStageSatisfied(stage) {
+        if (loaderHideStage === 'runtime-ready') {
+          return stage === 'dependencies-complete' || stage === 'runtime-initialized';
+        }
+
+        return stage === loaderHideStage;
+      }
+
+      function recordLoaderStage(stage) {
+        if (recordedLoaderStages.has(stage)) return;
+
+        const elapsed = performance.now() - loaderStartTime;
+        recordedLoaderStages.set(stage, elapsed);
+        console.log(`[loader] ${stage} ${elapsed.toFixed(0)}ms`);
+        updateLoadingLabel(stage);
+        renderLoaderDebug();
+
+        if (isHideStageSatisfied(stage)) {
+          hideSignalReceived = true;
+          tryHideLoading();
+        }
+      }
 
       function focusCanvas() {
         try {
@@ -345,15 +492,36 @@
       }
 
       function tryHideLoading() {
-        if (!appReadyToShow) return;
-        hideLoading();
+        if (!hideSignalReceived || loadingHidden || hideScheduled) return;
+
+        hideScheduled = true;
+        const finishHide = () => {
+          hideScheduled = false;
+          hideLoading();
+        };
+
+        if (loaderHoldMs > 0) {
+          window.setTimeout(finishHide, loaderHoldMs);
+          return;
+        }
+
+        finishHide();
       }
 
-      function markAppReady() {
-        if (appReadyToShow) return;
-        appReadyToShow = true;
-        tryHideLoading();
-      }
+      window.__galleryLoaderStage = recordLoaderStage;
+      window.galleryLoaderDebug = {
+        get hideStage() { return loaderHideStage; },
+        get holdMs() { return loaderHoldMs; },
+        get timeline() {
+          return loaderStageOrder
+            .filter((stage) => recordedLoaderStages.has(stage))
+            .map((stage) => ({
+              stage,
+              label: loaderStageLabels[stage],
+              elapsedMs: recordedLoaderStages.get(stage)
+            }));
+        }
+      };
 
       var Module = {
         canvas: canvasElement,
@@ -366,13 +534,23 @@
         totalDependencies: 0,
         monitorRunDependencies(left) {
           this.totalDependencies = Math.max(this.totalDependencies, left);
-          if (left === 0) markAppReady();
+          if (left === 0) recordLoaderStage('dependencies-complete');
         },
         onRuntimeInitialized() {
           syncAllVirtualControls();
-          markAppReady();
+          recordLoaderStage('runtime-initialized');
         }
       };
+
+      if (loadingImageElement.complete) {
+        recordLoaderStage('loading-artwork-ready');
+      } else {
+        loadingImageElement.addEventListener('load', () => recordLoaderStage('loading-artwork-ready'), { once: true });
+        loadingImageElement.addEventListener('error', () => recordLoaderStage('loading-artwork-ready'), { once: true });
+      }
+
+      recordLoaderStage('shell-ready');
+      renderLoaderDebug();
 
       window.onerror = (message) => {
         console.error(message);
