@@ -155,11 +155,11 @@
 
       #touch-controls {
         position: absolute;
-        right: 4px;
-        bottom: 4px;
+        right: 6px;
+        bottom: 6px;
         display: grid;
-        grid-template-columns: repeat(3, 56px);
-        grid-template-rows: repeat(3, 56px);
+        grid-template-columns: repeat(3, 52px);
+        grid-template-rows: repeat(2, 52px);
         gap: 2px;
         z-index: 3;
         pointer-events: none;
@@ -201,24 +201,34 @@
         transform: translateY(1px);
       }
 
-      .control-up {
+      .control-turn-left {
+        grid-column: 1;
+        grid-row: 1;
+      }
+
+      .control-forward {
         grid-column: 2;
         grid-row: 1;
       }
 
-      .control-left {
+      .control-turn-right {
+        grid-column: 3;
+        grid-row: 1;
+      }
+
+      .control-step-left {
         grid-column: 1;
         grid-row: 2;
       }
 
-      .control-right {
-        grid-column: 3;
+      .control-backward {
+        grid-column: 2;
         grid-row: 2;
       }
 
-      .control-down {
-        grid-column: 2;
-        grid-row: 3;
+      .control-step-right {
+        grid-column: 3;
+        grid-row: 2;
       }
 
       @media (pointer: fine) and (min-width: 801px) {
@@ -229,16 +239,16 @@
 
       @media (max-width: 520px) {
         #touch-controls {
-          right: 3px;
-          bottom: 3px;
-          grid-template-columns: repeat(3, 50px);
-          grid-template-rows: repeat(3, 50px);
+          right: 5px;
+          bottom: 5px;
+          grid-template-columns: repeat(3, 46px);
+          grid-template-rows: repeat(2, 46px);
           gap: 2px;
         }
 
         .control-button {
           border-radius: 14px;
-          font-size: 22px;
+          font-size: 20px;
         }
       }
     </style>
@@ -252,10 +262,12 @@
       </div>
       <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="0"></canvas>
       <div id="touch-controls" aria-label="Touch controls">
-        <button class="control-button control-up" type="button" data-control="0" aria-label="Move forward">&uarr;</button>
-        <button class="control-button control-left" type="button" data-control="2" aria-label="Turn left">&larr;</button>
-        <button class="control-button control-right" type="button" data-control="3" aria-label="Turn right">&rarr;</button>
-        <button class="control-button control-down" type="button" data-control="1" aria-label="Move backward">&darr;</button>
+        <button class="control-button control-turn-left" type="button" data-control="2" aria-label="Turn left">&#8634;</button>
+        <button class="control-button control-forward" type="button" data-control="0" aria-label="Move forward">&uarr;</button>
+        <button class="control-button control-turn-right" type="button" data-control="3" aria-label="Turn right">&#8635;</button>
+        <button class="control-button control-step-left" type="button" data-control="4" aria-label="Step left">&larr;</button>
+        <button class="control-button control-backward" type="button" data-control="1" aria-label="Move backward">&darr;</button>
+        <button class="control-button control-step-right" type="button" data-control="5" aria-label="Step right">&rarr;</button>
       </div>
     </div>
 

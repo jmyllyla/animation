@@ -23,10 +23,12 @@ typedef struct{
 } image_t;
 
 typedef enum {
-    VirtualControlUp = 0,
-    VirtualControlDown,
-    VirtualControlLeft,
-    VirtualControlRight,
+    VirtualControlMoveForward = 0,
+    VirtualControlMoveBackward,
+    VirtualControlTurnLeft,
+    VirtualControlTurnRight,
+    VirtualControlStepLeft,
+    VirtualControlStepRight,
     VirtualControlCount,
 } virtual_control_t;
 
@@ -165,19 +167,12 @@ void ResetVirtualControls(void)
 }
 #endif
 
-static bool IsControlDown(int key)
+static bool IsActionDown(int key, virtual_control_t control)
 {
     bool pressed = IsKeyDown(key);
 
 #if defined(PLATFORM_WEB)
-    switch (key)
-    {
-        case KEY_UP: return pressed || virtualControlStates[VirtualControlUp];
-        case KEY_DOWN: return pressed || virtualControlStates[VirtualControlDown];
-        case KEY_LEFT: return pressed || virtualControlStates[VirtualControlLeft];
-        case KEY_RIGHT: return pressed || virtualControlStates[VirtualControlRight];
-        default: return pressed;
-    }
+    return pressed || virtualControlStates[control];
 #else
     return pressed;
 #endif
@@ -451,19 +446,30 @@ int main(void)
         float frameTime = GetFrameTime();
         Vector3 forward = { sinf(cameraYaw), 0.0f, cosf(cameraYaw) };
 
-        if (IsControlDown(KEY_LEFT)) cameraYaw += cameraTurnSpeed * frameTime;
-        if (IsControlDown(KEY_RIGHT)) cameraYaw -= cameraTurnSpeed * frameTime;
+        if (IsActionDown(KEY_LEFT, VirtualControlTurnLeft)) cameraYaw += cameraTurnSpeed * frameTime;
+        if (IsActionDown(KEY_RIGHT, VirtualControlTurnRight)) cameraYaw -= cameraTurnSpeed * frameTime;
 
         forward = (Vector3){ sinf(cameraYaw), 0.0f, cosf(cameraYaw) };
-        if (IsControlDown(KEY_UP))
+        Vector3 right = { forward.z, 0.0f, -forward.x };
+        if (IsActionDown(KEY_UP, VirtualControlMoveForward))
         {
             camera.position.x += forward.x * cameraMoveSpeed * frameTime;
             camera.position.z += forward.z * cameraMoveSpeed * frameTime;
         }
-        if (IsControlDown(KEY_DOWN))
+        if (IsActionDown(KEY_DOWN, VirtualControlMoveBackward))
         {
             camera.position.x -= forward.x * cameraMoveSpeed * frameTime;
             camera.position.z -= forward.z * cameraMoveSpeed * frameTime;
+        }
+        if (IsActionDown(KEY_A, VirtualControlStepLeft))
+        {
+            camera.position.x -= right.x * cameraMoveSpeed * frameTime;
+            camera.position.z -= right.z * cameraMoveSpeed * frameTime;
+        }
+        if (IsActionDown(KEY_D, VirtualControlStepRight))
+        {
+            camera.position.x += right.x * cameraMoveSpeed * frameTime;
+            camera.position.z += right.z * cameraMoveSpeed * frameTime;
         }
 
         camera.position.y = cameraEyeHeight;
