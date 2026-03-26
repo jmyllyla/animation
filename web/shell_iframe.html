@@ -202,7 +202,7 @@
       ]);
       const activePointers = new Map();
       const pressedControlCounts = new Map();
-      let sceneReadyToShow = false;
+      let appReadyToShow = false;
       let loadingHidden = false;
 
       canvasElement.addEventListener('webglcontextlost', (event) => {
@@ -345,19 +345,15 @@
       }
 
       function tryHideLoading() {
-        if (!sceneReadyToShow) return;
-        window.requestAnimationFrame(() => {
-          window.requestAnimationFrame(hideLoading);
-        });
+        if (!appReadyToShow) return;
+        hideLoading();
       }
 
-      function markSceneReady() {
-        if (sceneReadyToShow) return;
-        sceneReadyToShow = true;
+      function markAppReady() {
+        if (appReadyToShow) return;
+        appReadyToShow = true;
         tryHideLoading();
       }
-
-      window.__gallerySceneReady = markSceneReady;
 
       var Module = {
         canvas: canvasElement,
@@ -370,9 +366,11 @@
         totalDependencies: 0,
         monitorRunDependencies(left) {
           this.totalDependencies = Math.max(this.totalDependencies, left);
+          if (left === 0) markAppReady();
         },
         onRuntimeInitialized() {
           syncAllVirtualControls();
+          markAppReady();
         }
       };
 
