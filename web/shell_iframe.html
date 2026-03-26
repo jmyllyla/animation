@@ -320,7 +320,7 @@
       }
 
       function normalizeLoaderHideStage(value) {
-        const normalized = (value || 'runtime').trim().toLowerCase();
+        const normalized = (value || 'frame').trim().toLowerCase();
         switch (normalized) {
           case 'deps':
           case 'dependencies':
@@ -339,7 +339,7 @@
           case 'artwork':
             return 'loading-artwork-ready';
           default:
-            return 'runtime-ready';
+            return 'first-frame';
         }
       }
 
